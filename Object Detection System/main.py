@@ -1,6 +1,7 @@
 from ultralytics import YOLO
 import cv2
-import math 
+import math
+import requests 
 
 cap = cv2.VideoCapture(0)
 cap.set(3, 640)
@@ -122,6 +123,17 @@ while True:
             else:
                 class_name = "Unknown"
                 print("Class index out of range:", cls)
+
+            # If detected object matches target (e.g., a bottle)
+            if class_name == "Bottle" and confidence > 0.7:
+                print(f"Detected {class_name} with confidence {confidence}")
+                
+                # Send a request to the Flask server to start the robot
+                try:
+                    response = requests.get('http://localhost:5000/control?cmd=start')
+                    print(response.json())
+                except Exception as e:
+                    print("Failed to send command to robot:", e)
 
             org = (x1, y1 - 10)
             font = cv2.FONT_HERSHEY_SIMPLEX
