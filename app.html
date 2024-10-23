@@ -1,54 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" type="text/css" href="/css/styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document</title>
+<link rel="stylesheet" type="text/css" href="/css/styles.css">
 </head>
-
+ 
 <body>
-    <header class="headerBar">
-        <span class="headTitle">Robot Arm Control Panel</span>
-    </header>
-
+<header class="headerBar">
+<span class="headTitle">Robot Arm Control Panel</span>
+</header>
+ 
     <div class="mainContent">
-
+ 
         <button class="clicks" onclick="sendCommand('start')">Start</button>
-        <button class="clicks" onclick="sendCommand('stop')">Stop</button>
-
+<button class="clicks" onclick="sendCommand('stop')">Stop</button>
+ 
         <div class="videoBox">
-            <video id="videoFeed" autoplay></video>
-        </div>
-  
-        <script>
+<video id="videoFeed" autoplay></video>
+</div>
+<script>
             function sendCommand(command) {
                 fetch(`/control?cmd=${command}`)
-                .then(response => response.json())
-                .then(data => console.log(data));
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => console.log(data))
+                .catch(error => console.error('Error:', error));
             }
-
-            // For accessing the live video feed (using browser's camera or external IP feed)
-            function startVideo() {
-                const video = document.getElementById('videoFeed');
-
-                // Access webcam stream
-                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    navigator.mediaDevices.getUserMedia({ video: true })
-                    .then(function(stream) {
-                        video.srcObject = stream;
-                    })
-                    .catch(function(err) {
-                        console.log("Error accessing video feed: ", err);
-                    });
-                }
+ 
+           // For accessing the live video feed (using browser's camera or external IP feed)
+           function startVideo() {
+            const video = document.getElementById('videoFeed');
+ 
+            // Access webcam stream
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    video.srcObject = stream;
+                })
+                .catch(function(err) {
+                    console.log("Error accessing video feed: ", err);
+                    alert("Unable to access camera: " + err.message);
+                });
+            } else {
+                alert("Your browser does not support accessing the webcam.");
             }
-
-            // Start video when the page loads
-            window.onload = startVideo;
-        </script>
-
+        }
+ 
+        // Start video when the page loads
+        window.onload = startVideo;
+</script>
+ 
     </div>
-
+ 
   </body>
 </html>

@@ -1,21 +1,32 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import serial
-
+ 
 app = Flask(__name__)
-
-# Replace with your Pico's serial port
-pico_serial = serial.Serial('/dev/ttyUSB0', 9600)
-
+ 
+# Try opening the serial port with exception handling
+try:
+    pico_serial = serial.Serial('COM3', 9600, timeout=1)
+    print("Serial connection established!")
+except serial.SerialException as e:
+    print(f"Error opening serial port: {e}")
+    pico_serial = None
+ 
 @app.route('/control', methods=['GET'])
 def control():
     command = request.args.get('cmd')
+ 
+    if pico_serial is None:
+        return jsonify({"error": "Serial port not available"}), 500
+ 
     if command == 'start':
-        pico_serial.write(b'start\n')  # Send 'start' command to Pico
-        return {"status": "started"}, 200
+        pico_serial.write(b'start\n')
+        return jsonify({"status": "Robot arm started"}), 200
     elif command == 'stop':
-        pico_serial.write(b'stop\n')  # Send 'stop' command to Pico
-        return {"status": "stopped"}, 200
-    return {"error": "invalid command"}, 400
-
-if __name__ == "__main__":
-    app.run(debug=True)
+        pico_serial.write(b'stop\n')
+        return jsonify({"status": "Robot arm stopped"}), 200
+    else:
+        return jsonify({"error": "Invalid command"}), 400
+ 
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5001, debug=True)  # Run Flask on port 5001
+ 
