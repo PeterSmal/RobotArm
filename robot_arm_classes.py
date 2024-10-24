@@ -66,7 +66,7 @@ class Controller:
         self.gripper.close()
         time.sleep(1)
 
-        # Move to the place position
+       # Move to the place position
         print("Moving to place position...")
         self.robot_arm.move_to_position(place_x, place_y)
         time.sleep(1)
@@ -74,3 +74,10 @@ class Controller:
         # Open the gripper to release the object
         self.gripper.open()
         time.sleep(1)
+
+        # Optionally, move the arm back to a rest or home position (if desired)
+        print("Returning to rest position...")
+        self.robot_arm.move_to_position(0, 0)  # Example rest position (adjust as needed)
+        time.sleep(1)
+
+        print("Pick-and-place operation complete.")

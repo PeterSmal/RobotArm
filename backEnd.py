@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 import serial
-from robot_arm_classes import RobotArm, Gripper, Controller
 import time
+from robot_arm_classes import RobotArm, Gripper, Controller
+from object_detection import ObjectDetection
+import cv2
 
 app = Flask(__name__)
 
@@ -35,6 +37,33 @@ robot_arm = RobotArm(L1, L2)
 gripper = Gripper(pin=15)  # Assuming the gripper is connected to Pin 15
 controller = Controller(robot_arm, gripper)
 
+# Initialize Object Detection
+object_detector = ObjectDetection('./yolo-Weights/yolov8n.pt')
+
+@app.route('/detect', methods=['GET'])
+def detect():
+    """Endpoint to perform object detection and send commands to the robot arm."""
+    img, detected_objects = object_detector.detect_objects()
+
+    if detected_objects is None or len(detected_objects) == 0:
+        return jsonify({"error": "No objects detected"}), 404
+
+    # Example: Just focus on the first detected object
+    first_object = detected_objects[0]
+    x1, y1, x2, y2 = first_object['bounding_box']
+    obj_x = (x1 + x2) / 2  # Calculate the center x of the object
+    obj_y = (y1 + y2) / 2  # Calculate the center y of the object
+
+    print(f"Detected object at ({obj_x}, {obj_y})")
+
+    # Move robot arm to the detected object location
+    controller.robot_arm.move_to_position(obj_x, obj_y)
+
+    # Optionally, return detected objects
+    return jsonify({
+        "detected_objects": detected_objects
+    }), 200
+
 @app.route('/control', methods=['GET'])
 def control():
     global pico_serial
@@ -44,9 +73,8 @@ def control():
     command = request.args.get('cmd')
 
     if command == 'start':
-        # Perform a simple pick-and-place operation (can customize further)
-        controller.pick_and_place(pick_x=15, pick_y=10, place_x=25, place_y=5)
-        return jsonify({"status": "Robot arm started with pick-and-place"}), 200
+        # Perform object detection and move the arm based on detected objects
+        return detect()
     elif command == 'stop':
         pico_serial.write(b'stop\n')  # Stop the current motion
         gripper.open()  # Open the gripper as part of the stop command
@@ -78,3 +106,4 @@ if __name__ == '__main__':
         if pico_serial is not None and pico_serial.is_open:
             pico_serial.close()
             print("Serial connection closed during Flask shutdown")
+
