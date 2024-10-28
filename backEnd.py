@@ -70,30 +70,30 @@ def video_feed():
 @app.route('/control', methods=['GET'])
 def control():
     global pico_serial
-    # Fetch the command from the URL parameters
     command = request.args.get('cmd')
- 
+
     # Check if the serial connection was established
     if pico_serial is None or not pico_serial.is_open:
         print("Serial port is not available or closed.")
         return jsonify({"error": "Serial port not available"}), 500
- 
+
     # Ensure the command is valid
     if command not in ['start', 'stop']:
         print(f"Invalid command received: {command}")
         return jsonify({"error": "Invalid command"}), 400
- 
+
     try:
         # Send the command to the Pico via UART
         pico_serial.write(f"{command}\n".encode())  # Send 'start' or 'stop' with a newline
+        status_message = f"Robot arm {command}ed"  # Message for frontend logs
         print(f"Sent '{command}' command to Pico")
- 
-        # Respond with a success message
-        return jsonify({"status": f"Robot arm {command}ed"}), 200
+        
+        # Include a status message in the JSON response
+        return jsonify({"status": status_message}), 200
     except Exception as e:
-        print(f"Error sending command to Pico: {e}")
+        error_message = f"Error sending command to Pico: {e}"
+        print(error_message)
         return jsonify({"error": "Failed to send command"}), 500
- 
 
 # Route to manually close the serial connection
 @app.route('/close_serial', methods=['GET'])
