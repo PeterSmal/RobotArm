@@ -4,15 +4,15 @@ import time
 
 from object_detection import ObjectDetection
 import cv2
-from object_detection import ObjectDetection
+
 
 app = Flask(__name__)
 
-object_detection = ObjectDetection()
 object_detector = ObjectDetection('./yolo-Weights/yolov8n.pt')
  
 # Initialize pico_serial to None globally
 pico_serial = None
+object_detection_active = False  # New flag to control object detection
  
 # Function to initialize serial connection
 def initialize_serial():
@@ -40,60 +40,76 @@ initialize_serial()
 def index():
     return render_template('app.html')
 
+# Video stream with object detection integration, controlled by start button
 def generate_frames():
-    cap = cv2.VideoCapture(0)  # Open the camera (index 0 for default camera)
-   
+    global object_detection_active
+    cap = cv2.VideoCapture(0)  # Open camera (index 0 for default camera)
+
     while True:
-        success, frame = cap.read()  # Capture frame-by-frame
+        success, frame = cap.read()
         if not success:
-            break  # If frame capture fails, break out of the loop
+            break
         else:
-            # Pass the captured frame to the detect_objects() method
-            img, detected_objects = object_detector.detect_objects(frame)  # Pass the frame here
- 
-            # Encode the frame in JPEG format for streaming
+            # Only run object detection if start button has been pressed
+            if object_detection_active:
+                img, detected_objects = object_detector.detect_objects(frame)
+                
+                # Check if target object is detected
+                target_detected = False
+                for obj in detected_objects:
+                    if obj['name'] == 'target_object':  # Replace 'target_object' with the object name to detect
+                        target_detected = True
+                        break
+
+                # If target object detected, send start command to Pico
+                if target_detected:
+                    if pico_serial and pico_serial.is_open:
+                        pico_serial.write(b'start\n')
+                        print("Object detected, sending 'start' command to Pico")
+                        object_detection_active = False  # Stop further detection after detection
+
+            else:
+                # If not detecting, just display the frame
+                img = frame
+
+            # Encode and yield frame for streaming
             ret, buffer = cv2.imencode('.jpg', img)
             frame = buffer.tobytes()
- 
-            # Yield the frame in byte format for streaming to the frontend
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
- 
-    cap.release()  # Release the camera when done
+
+    cap.release()
  
  
 @app.route('/video_feed')
 def video_feed():
-    """Video streaming route. Put this in the src attribute of an img tag."""
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+# Control route to handle start and stop commands
 @app.route('/control', methods=['GET'])
 def control():
-    global pico_serial
+    global pico_serial, object_detection_active
     command = request.args.get('cmd')
 
-    # Check if the serial connection was established
     if pico_serial is None or not pico_serial.is_open:
         print("Serial port is not available or closed.")
         return jsonify({"error": "Serial port not available"}), 500
 
-    # Ensure the command is valid
-    if command not in ['start', 'stop']:
+    if command == 'start':
+        object_detection_active = True  # Start object detection
+        print("Object detection activated by start button.")
+        return jsonify({"status": "Object detection started"}), 200
+
+    elif command == 'stop':
+        object_detection_active = False  # Stop object detection
+        if pico_serial.is_open:
+            pico_serial.write(b'stop\n')  # Send stop command to Pico
+            print("Sent 'stop' command to Pico.")
+        return jsonify({"status": "Object detection and robot arm stopped"}), 200
+
+    else:
         print(f"Invalid command received: {command}")
         return jsonify({"error": "Invalid command"}), 400
-
-    try:
-        # Send the command to the Pico via UART
-        pico_serial.write(f"{command}\n".encode())  # Send 'start' or 'stop' with a newline
-        status_message = f"Robot arm {command}ed"  # Message for frontend logs
-        print(f"Sent '{command}' command to Pico")
-        
-        # Include a status message in the JSON response
-        return jsonify({"status": status_message}), 200
-    except Exception as e:
-        error_message = f"Error sending command to Pico: {e}"
-        print(error_message)
-        return jsonify({"error": "Failed to send command"}), 500
 
 # Route to manually close the serial connection
 @app.route('/close_serial', methods=['GET'])
@@ -105,6 +121,9 @@ def close_serial():
         return jsonify({"status": "Serial connection manually closed"}), 200
     else:
         return jsonify({"error": "Serial port is not open"}), 400
+    
+#http://127.0.0.1:5001/close_serial
+
  
 # Ensure the serial port is closed properly when the app shuts down
 @app.teardown_appcontext
