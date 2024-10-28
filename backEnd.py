@@ -19,7 +19,7 @@ def initialize_serial():
     if pico_serial is None or not pico_serial.is_open:
         try:
             # Replace COM3 with the correct port number
-            pico_serial = serial.Serial('COM2', 9600, timeout=1)
+            pico_serial = serial.Serial('COM5', 9600, timeout=1)
             print("Serial connection established!")
         except serial.SerialException as e:
             if "Access is denied" in str(e):
