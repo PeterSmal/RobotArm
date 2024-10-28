@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Arm Control with Object Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header class="headerBar">
+        <h1>Robot Arm Control with Object Detection</h1>
+    </header>
+ 
+    <div class="mainContent">
+        <div class="control-container">
+            <button class="clicks" onclick="sendCommand('start')">Start Robot Arm</button>
+            <div class="videoBox">
+
+                <!-- Use an img tag to display the video feed with object detection -->
+                <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Video Feed"> 
+
+            </div>
+            <button class="clicks" onclick="sendCommand('stop')">Stop Robot Arm</button>
+        </div>
+        <!-- Div to display the simulation logs -->
+        <div id="logs" class="logContainer"></div>
+    </div>
+ 
+    <script>
+        function sendCommand(command) {
+            fetch(`/control?cmd=${command}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    const logContainer = document.getElementById('logs');
+                    logContainer.innerHTML = '';
+                    data.logs.forEach(log => {
+                        const logElement = document.createElement('p');
+                        logElement.textContent = log;
+                        logContainer.appendChild(logElement);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>
