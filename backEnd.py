@@ -6,8 +6,6 @@ from object_detection import ObjectDetection
 import cv2
 from object_detection import ObjectDetection
 
- 
-app = Flask(__name__)
 
 object_detection = ObjectDetection()
 object_detector = ObjectDetection('./yolo-Weights/yolov8n.pt')
@@ -32,7 +30,12 @@ def initialize_serial():
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             pico_serial = None
- 
+
+# Run the serial initialization outside of Flask's lifecycle
+initialize_serial()
+
+app = Flask(__name__)
+
 # Flask hook: Ensure serial connection before every request
 @app.before_request
 def ensure_serial_connection():
