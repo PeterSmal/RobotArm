@@ -6,6 +6,7 @@ from object_detection import ObjectDetection
 import cv2
 from object_detection import ObjectDetection
 
+app = Flask(__name__)
 
 object_detection = ObjectDetection()
 object_detector = ObjectDetection('./yolo-Weights/yolov8n.pt')
@@ -33,8 +34,6 @@ def initialize_serial():
 
 # Run the serial initialization outside of Flask's lifecycle
 initialize_serial()
-
-app = Flask(__name__)
 
 # Serve the HTML file at the root URL
 @app.route('/')
