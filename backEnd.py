@@ -36,11 +36,6 @@ initialize_serial()
 
 app = Flask(__name__)
 
-# Flask hook: Ensure serial connection before every request
-@app.before_request
-def ensure_serial_connection():
-    initialize_serial()
-
 # Serve the HTML file at the root URL
 @app.route('/')
 def index():
