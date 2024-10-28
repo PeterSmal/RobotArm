@@ -119,7 +119,7 @@ def shutdown_serial_connection(exception=None):
  
 if __name__ == '__main__':
     try:
-        app.run(host='0.0.0.0', port=5001, debug=True)
+        app.run(host='0.0.0.0', port=5001, debug=False)
     finally:
         if pico_serial is not None and pico_serial.is_open:
             pico_serial.close()
