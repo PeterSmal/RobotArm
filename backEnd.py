@@ -50,33 +50,22 @@ def generate_frames():
         if not success:
             break
         else:
-            # Only run object detection if start button has been pressed
+             # Activate object detection if start is pressed
             if object_detection_active:
                 img, detected_objects = object_detector.detect_objects(frame)
-                
-                # Check if target object is detected
-                target_detected = False
                 for obj in detected_objects:
-                    if obj['name'] == 'Car', 'Motorbike', 'Aeroplane':  # Replace 'target_object' with the object name to detect
-                        target_detected = True
+                    if obj['name'] in ['Car', 'Motorbike','Aeroplane']:
+                        print("Object detected:", obj['name'])
+                        robot_arm.pick_up_object()
+                        robot_arm.place_object()
+                        object_detection_active = False
                         break
-
-                # If target object detected, send start command to Pico
-                if target_detected:
-                    if pico_serial and pico_serial.is_open:
-                        pico_serial.write(b'start\n')
-                        print("Object detected, sending 'start' command to Pico")
-                        object_detection_active = False  # Stop further detection after detection
-
             else:
-                # If not detecting, just display the frame
                 img = frame
 
-            # Encode and yield frame for streaming
             ret, buffer = cv2.imencode('.jpg', img)
             frame = buffer.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
     cap.release()
  

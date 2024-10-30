@@ -27,26 +27,25 @@
     </div>
  
     <script>
-      function sendCommand(command) {
-    fetch(`/control?cmd=${command}`)
-        .then(response => response.json())
-        .then(data => {
-            const logContainer = document.getElementById('logs');
-            logContainer.innerHTML = '';  // Clear previous logs
-
-            // Check if there's an error or status in the response
-            if (data.error) {
-                const logElement = document.createElement('p');
-                logElement.textContent = `Error: ${data.error}`;
-                logContainer.appendChild(logElement);
-            } else if (data.status) {
-                const logElement = document.createElement('p');
-                logElement.textContent = data.status;  // Display movement status
-                logContainer.appendChild(logElement);
-            }
-        })
-        .catch(error => console.error('Error:', error));
-}
+        function sendCommand(command) {
+            fetch(`/control?cmd=${command}`)
+                .then(response => response.json())
+                .then(data => {
+                    const logContainer = document.getElementById('logs');
+                    const logElement = document.createElement('p');
+                    
+                    if (data.error) {
+                        logElement.textContent = `Error: ${data.error}`;
+                        logElement.classList.add('error');  // Add error class for styling
+                    } else if (data.status) {
+                        logElement.textContent = data.status;
+                        logElement.classList.add('success');  // Add success class for styling
+                    }
+        
+                    logContainer.appendChild(logElement);
+                })
+                .catch(error => console.error('Error:', error));
+        }
     </script>
 </body>
 </html>
