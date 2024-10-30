@@ -1,64 +1,144 @@
-from ultralytics import YOLO
-import cv2
-import math 
-# start webcam
-cap = cv2.VideoCapture(0)
-cap.set(3, 640)
-cap.set(4, 480)
+from machine import Pin, PWM, UART
+import time
 
-# model
-model = YOLO("./yolo-Weights/yolov8n.pt")
+# Define constants for servo PWM control
+pwm_frequency = 50     # Standard frequency for servos (50 Hz)
+min_duty = 1000        # Minimum duty cycle for 0 degrees
+max_duty = 9000        # Maximum duty cycle for 180 degrees
 
-# object classes
-classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
-              "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
-              "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
-              "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat",
-              "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup",
-              "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
-              "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed",
-              "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell phone",
-              "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
-              "teddy bear", "hair drier", "toothbrush"
-              ]
+# Servo pin mapping
+servo_pins = {
+    "base": 16,         # Base rotation
+    "lower_arm": 17,    # Lower arm
+    "front_arm": 18,    # Front arm
+    "wrist_tilt": 19,   # Wrist tilt
+    "wrist_rotation": 20, # Wrist rotation
+    "gripper": 21       # Gripper
+}
 
+# Function to convert angle to PWM duty cycle
+def angle_to_duty_cycle(angle):
+    return int((angle / 180) * (max_duty - min_duty) + min_duty)
+
+# Robot Arm class
+class RobotArm:
+    def __init__(self):
+        # Initialize servos to default positions on startup
+        self.default_positions = {
+            "base": 90,          # Base neutral
+            "lower_arm": 80,     # Lower arm neutral
+            "front_arm": 70,     # Front arm neutral
+            "wrist_tilt": 90,    # Wrist tilt neutral
+            "wrist_rotation": 140, # Wrist rotation neutral
+            "gripper": 60        # Gripper open
+        }
+        self.pickup_positions = {
+            "base": 160,         # Position to align with pickup
+            "lower_arm": 90,     # Lower arm for pickup
+            "front_arm": 25,     # Adjust front arm for reach
+            "wrist_tilt": 140,   # Keep wrist level
+            "wrist_rotation": 140, # Wrist neutral
+            "gripper": 110       # Gripper closed for pickup
+        }
+        self.place_positions = {
+            "base": 135,         # Position to align with placement area
+            "lower_arm": 90,     # Lower arm adjusted for placement
+            "front_arm": 70,     # Adjust front arm for reach
+            "wrist_tilt": 90,    # Keep wrist level
+            "wrist_rotation": 140, # Wrist neutral
+            "gripper": 60        # Gripper open to release object
+        }
+
+        # Move arm to default position at startup with a step delay
+        self.move_to_default_position(step_delay=0.05)
+
+    # Function to move a single servo to a specific angle with a step delay
+    def move_servo_by_name(self, name, target_angle, stop_delay=1, step_delay=0.02, step_size=1):
+        if name in servo_pins:
+            servo_pin = servo_pins[name]
+            servo = PWM(Pin(servo_pin))
+            servo.freq(pwm_frequency)
+
+            # Get the current angle (start at default if not previously set)
+            current_angle = self.default_positions.get(name, 90)
+            # Smoothly step from current to target angle
+            while abs(current_angle - target_angle) > step_size:
+                # Incrementally move towards the target
+                current_angle += step_size if current_angle < target_angle else -step_size
+                servo.duty_u16(angle_to_duty_cycle(current_angle))
+                time.sleep(step_delay)
+
+            # Set final position to target
+            servo.duty_u16(angle_to_duty_cycle(target_angle))
+            time.sleep(stop_delay)
+            servo.deinit()
+            print(f"Servo '{name}' on pin {servo_pin} moved to {target_angle} degrees.")
+        else:
+            print(f"Error: Servo '{name}' not found.")
+
+    # Move to default position
+    def move_to_default_position(self, step_delay=0.02):
+        print("Moving to default position...")
+        for name, angle in self.default_positions.items():
+            self.move_servo_by_name(name, angle, stop_delay=1, step_delay=step_delay)
+
+    # Move to pickup position
+    def move_to_pickup_position(self, step_delay=0.02):
+        print("Moving to pickup position...")
+        for name, angle in self.pickup_positions.items():
+            self.move_servo_by_name(name, angle, stop_delay=1, step_delay=step_delay)
+
+    # Move to place position with front arm movement first
+    def move_to_place_position(self, step_delay=0.02):
+        print("Moving to place position...")
+        # Move front arm first
+        self.move_servo_by_name("front_arm", self.place_positions["front_arm"], stop_delay=1, step_delay=step_delay)
+        
+        # Then move other servos in desired order
+        for name in ["lower_arm", "wrist_tilt", "wrist_rotation", "base"]:
+            if name in self.place_positions:
+                self.move_servo_by_name(name, self.place_positions[name], stop_delay=1, step_delay=step_delay)
+        
+        # Open the gripper last to release the object
+        self.move_servo_by_name("gripper", self.place_positions["gripper"], stop_delay=2, step_delay=step_delay)
+
+    # Function to pick up an object
+    def pick_up_object(self, step_delay=0.02):
+        self.move_to_pickup_position(step_delay=step_delay)
+        print("Picking up object...")
+        self.move_servo_by_name("gripper", 110, stop_delay=2, step_delay=step_delay)  # Close gripper
+        time.sleep(1)
+
+    # Function to place an object
+    def place_object(self, step_delay=0.02):
+        self.move_to_place_position(step_delay=step_delay)
+        print("Placing object...")
+        self.move_servo_by_name("gripper", 60, stop_delay=2, step_delay=step_delay)   # Open gripper
+        time.sleep(1)
+
+# Initialize RobotArm and UART for communication
+arm = RobotArm()
+uart = UART(0, 9600)  # Initialize UART for serial communication (UART0 at 9600 baud)
+
+print("Pico listening for UART commands...")
+time.sleep(1)
 
 while True:
-    success, img = cap.read()
-    results = model(img, stream=True)
+    if uart.any():
+        command = uart.read().decode().strip()
+        
+        if command == 'start':
+            print("Received 'start' command.")
+            arm.pick_up_object(step_delay=0.05)
+            time.sleep(1)
+            arm.place_object(step_delay=0.05)
+            arm.move_to_default_position(step_delay=0.05)
 
-    # coordinates
-    for r in results:
-        boxes = r.boxes
+        elif command == 'stop':
+            print("Received 'stop' command.")
+            arm.move_to_default_position(step_delay=0.05)
 
-        for box in boxes:
-            # bounding box
-            x1, y1, x2, y2 = box.xyxy[0]
-            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
+        else:
+            print(f"Unknown command: {command}")
 
-            # put box in cam
-            cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 255), 3)
-
-            # confidence
-            confidence = math.ceil((box.conf[0]*100))/100
-            print("Confidence --->",confidence)
-
-            # class name
-            cls = int(box.cls[0])
-            print("Class name -->", classNames[cls])
-
-            # object details
-            org = [x1, y1]
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            fontScale = 1
-            color = (255, 0, 0)
-            thickness = 2
-
-            cv2.putText(img, classNames[cls], org, font, fontScale, color, thickness)
-
-    cv2.imshow('Webcam', img)
-    if cv2.waitKey(1) == ord('q'):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+    time.sleep(0.1)
