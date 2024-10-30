@@ -7,13 +7,14 @@ app = Flask(__name__)
 
 # Initialize global variables
 object_detector = ObjectDetection('./yolo-Weights/yolov8n.pt')
-pico_serial = None
+pico_serial = None  # Set initially to None for lazy initialization
 object_detection_active = False
 
 @app.route('/')
 def index():
     return render_template('app.html')
 
+# Function to generate video frames
 def generate_frames():
     global object_detection_active, pico_serial
     cap = cv2.VideoCapture(0)
@@ -62,20 +63,21 @@ def control():
 
     elif command == 'stop':
         object_detection_active = False
-        print("Stopping object detection and robot arm.")
         send_command_to_pico("stop")
+        print("Stopping object detection and sending 'stop' command to Pico.")
         return jsonify({"status": "Object detection and robot arm stopped"}), 200
 
     else:
         print(f"Invalid command received: {command}")
         return jsonify({"error": "Invalid command"}), 400
 
+# Function to send commands to Pico
 def send_command_to_pico(command):
     global pico_serial
     if pico_serial is None:
         try:
-            pico_serial = serial.Serial(port="COM5", parity=serial.PARITY_EVEN, stopbits=serial.STOPBITS_ONE, timeout=1)
-            pico_serial.flush()
+            pico_serial = serial.Serial(port="COM5", baudrate=9600, timeout=1)
+            time.sleep(2)  # Allow time for connection to establish
         except serial.SerialException as e:
             print(f"Failed to open serial port: {e}")
             return
