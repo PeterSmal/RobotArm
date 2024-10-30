@@ -53,7 +53,7 @@ def generate_frames():
                 # Check if a target object is detected
                 target_detected = False
                 for obj in results:
-                    if obj['name'] in ['car', 'motorcycle']:  # Change to your target objects
+                    if obj['name'] in ['Car', 'Motorbike', 'Aeroplane']:  # Change to your target objects
                         target_detected = True
                         break
 
