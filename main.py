@@ -129,14 +129,14 @@ while True:
         
         if command == 'start':
             print("Received 'start' command.")
-            arm.pick_up_object(step_delay=0.05)
+            arm.move_to_default_position(step_delay=1)
+            arm.pick_up_object(step_delay=2)
             time.sleep(1)
-            arm.place_object(step_delay=0.05)
-            arm.move_to_default_position(step_delay=0.05)
+            arm.place_object(step_delay=2)
 
         elif command == 'stop':
             print("Received 'stop' command.")
-            arm.move_to_default_position(step_delay=0.05)
+            arm.move_to_default_position(step_delay=2)
 
         else:
             print(f"Unknown command: {command}")
