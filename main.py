@@ -28,7 +28,7 @@ class RobotArm:
             "base": 90,          # Base neutral
             "lower_arm": 80,     # Lower arm neutral
             "front_arm": 70,     # Front arm neutral
-            "wrist_tilt": 90,    # Wrist tilt neutral
+            "wrist_tilt": 80,    # Wrist tilt neutral
             "wrist_rotation": 140, # Wrist rotation neutral
             "gripper": 60        # Gripper open
         }
