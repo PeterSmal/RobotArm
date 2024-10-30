@@ -80,30 +80,33 @@ class RobotArm:
         print("Moving to default position...")
         for name, angle in self.default_positions.items():
             self.move_servo_by_name(name, angle, step_delay=step_delay)
+        # Ensure gripper remains open when moving to default position
  
     def move_to_pickup_position(self, step_delay=0.02):
         print("Moving to pickup position...")
-        for name, angle in self.pickup_positions.items():
-            self.move_servo_by_name(name, angle, step_delay=step_delay)
+        for name in ["base", "lower_arm", "front_arm", "wrist_tilt", "wrist_rotation"]:  # Exclude gripper
+            self.move_servo_by_name(name, self.pickup_positions[name], step_delay=step_delay)
+        # The gripper remains open until explicitly closed in pick_up_object
  
     def move_to_place_position(self, step_delay=0.02):
-        print("Moving to place position...")
-        self.move_servo_by_name("front_arm", self.place_positions["front_arm"], step_delay=step_delay)
-        for name in ["lower_arm", "wrist_tilt", "wrist_rotation", "base"]:
-            if name in self.place_positions:
-                self.move_servo_by_name(name, self.place_positions[name], step_delay=step_delay)
-        self.move_servo_by_name("gripper", self.place_positions["gripper"], step_delay=step_delay)
+    print("Moving to place position...")
+    self.move_servo_by_name("front_arm", self.place_positions["front_arm"], step_delay=step_delay)
+    for name in ["lower_arm", "wrist_tilt", "wrist_rotation", "base"]:
+        if name in self.place_positions:
+            self.move_servo_by_name(name, self.place_positions[name], step_delay=step_delay)
+    # Move gripper to open position only at the end of placing object
+    self.move_servo_by_name("gripper", self.place_positions["gripper"], step_delay=step_delay)
  
     # Pick and place operations
     def pick_up_object(self, step_delay=0.02):
         self.move_to_pickup_position(step_delay=step_delay)
         print("Picking up object...")
-        self.move_servo_by_name("gripper", 110, stop_delay=2, step_delay=step_delay)
- 
+        self.move_servo_by_name("gripper", 110, stop_delay=2, step_delay=step_delay)  # Close gripper here, as last step
+
     def place_object(self, step_delay=0.02):
         self.move_to_place_position(step_delay=step_delay)
         print("Placing object...")
-        self.move_servo_by_name("gripper", 60, stop_delay=2, step_delay=step_delay)
+        self.move_servo_by_name("gripper", 60, stop_delay=2, step_delay=step_delay)  # Open gripper after placing object
  
 # Initialize RobotArm instance
 arm = RobotArm()
