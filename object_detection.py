@@ -4,7 +4,7 @@ from ultralytics import YOLO
 class ObjectDetection:
     def __init__(self, model_path='./yolo-Weights/yolov8n.pt'):
         self.model = YOLO(model_path)
-        self.target_classes = ["car", "motorcycle"]  # Define target classes here
+        self.target_classes = ["car", "motorbike"]  # Define target classes here
 
     def detect_objects(self, frame):
         # Resize frame for faster processing (optional)
