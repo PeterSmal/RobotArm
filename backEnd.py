@@ -28,7 +28,7 @@ def generate_frames():
                 img, detected_objects = object_detector.detect_objects(frame)
                 
                 # Check if target object is detected
-                target_detected = any(obj['name'] == 'car' for obj in detected_objects)
+                target_detected = any(obj['name'] == 'car','motorbike' for obj in detected_objects)
                 
                 if target_detected and pico_serial and pico_serial.is_open:
                     pico_serial.write(b'start\n')
