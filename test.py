@@ -15,7 +15,7 @@ try:
     time.sleep(2)  # Wait for the connection to establish
     pico_serial.write(b'start\n')  # Send 'start' command
     print("Sent 'start' command")
-    time.sleep(5)  # Wait and observe the Pico LED
+    time.sleep(10)  # Wait and observe the Pico LED
     pico_serial.write(b'stop\n')  # Send 'stop' command
     print("Sent 'stop' command")
 except Exception as e:
