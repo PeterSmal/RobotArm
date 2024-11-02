@@ -110,6 +110,15 @@ arm = RobotArm()
 flashing = False  # LED control flag
  
 print("Pico listening for UART commands...")
+
+  # Flash LED if active
+    if flashing:
+        led.toggle()
+        time.sleep(1.5)  # Adjust LED toggle interval
+    else:
+        led.off()
+ 
+    time.sleep(0.1)
  
 # Main loop
 while True:
@@ -122,7 +131,7 @@ while True:
             flashing = True
             print("Starting LED flashing and robot operation...")
             arm.pick_up_object(step_delay=0.05)
-            arm.place_object(step_delay=0.05)
+            arm.place_object(step_delay=0.08)
             arm.move_to_default_position(step_delay=0.05)
  
         elif data == "stop":
@@ -134,11 +143,3 @@ while True:
         else:
             print(f"Unknown command: {data}")
  
-    # Flash LED if active
-    if flashing:
-        led.toggle()
-        time.sleep(1.5)  # Adjust LED toggle interval
-    else:
-        led.off()
- 
-    time.sleep(0.1)
