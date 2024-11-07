@@ -169,14 +169,11 @@ def place_right():
     move_servo_by_name("gripper", 50, stop_delay=1, step_delay=0.05)
 
 # Example usage of the methods
-default_position()
-pickup_position()
-place_left()
-pickup_position_2()
-place_right()
-
-
-
+#default_position()
+#pickup_position()
+#place_left()
+#pickup_position_2()
+#place_right()
 
 # Clean up and deactivate PWM for all servos
 for servo in servos.values():
@@ -196,11 +193,17 @@ while True:
         if data == "start":
             flashing = True
             print("Starting LED flashing and robot operation...")
+            default_position()
+            pickup_position()
+            place_left()
+            pickup_position_2()
+            place_right()
  
         elif data == "stop":
             flashing = False
             led.off()  # Stop flashing LED immediately
             print("Stopping LED flashing and resetting robot arm.")
+            default_position()
  
         else:
             print(f"Unknown command: {data}")
