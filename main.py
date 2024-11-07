@@ -2,6 +2,7 @@ from machine import Pin, PWM, UART
 import time
 import select
 import sys
+import ujson
  
 # Define constants for servo PWM control
 pwm_frequency = 50     # Standard frequency for servos (50 Hz)
@@ -16,130 +17,118 @@ uart = UART(0, 9600)    # Initialize UART for serial communication (UART0 at 960
 poll_obj = select.poll()
 poll_obj.register(sys.stdin, select.POLLIN)
  
-# Servo pin mapping
 servo_pins = {
-    "base": 16,
-    "lower_arm": 17,
-    "front_arm": 18,
-    "wrist_tilt": 19,
-    "wrist_rotation": 20,
-    "gripper": 21
+    "base": 16,         # Base rotation
+    "lower_arm": 17,    # Lower arm
+    "front_arm": 18,    # Front arm
+    "wrist_tilt": 19,   # Wrist tilt
+    "wrist_rotation": 20, # Wrist rotation
+    "gripper": 21       # Gripper
 }
- 
-# Function to convert angle to PWM duty cycle
-def angle_to_duty_cycle(angle):
-    return int((angle / 180) * (max_duty - min_duty) + min_duty)
- 
-# Robot Arm class
-class RobotArm:
-    def __init__(self):
-        self.default_positions = {
-            "base": 90,
-            "lower_arm": 80,
-            "front_arm": 70,
-            "wrist_tilt": 80,
-            "wrist_rotation": 140,
-            "gripper": 60
-        }
-        self.pickup_positions = {
-            "base": 160,
-            "lower_arm": 90,
-            "front_arm": 25,
-            "wrist_tilt": 140,
-            "wrist_rotation": 140,
-            "gripper": 110
-        }
-        self.place_positions = {
-            "base": 135,
-            "lower_arm": 90,
-            "front_arm": 70,
-            "wrist_tilt": 90,
-            "wrist_rotation": 140,
-            "gripper": 60
-        }
-        self.move_to_default_position(step_delay=0.05)
- 
-    # Move to a specific servo angle with a step delay for smooth movement
-    def move_servo_by_name(self, name, target_angle, stop_delay=1, step_delay=0.02, step_size=1):
-        if name in servo_pins:
-            servo_pin = servo_pins[name]
-            servo = PWM(Pin(servo_pin))
-            servo.freq(pwm_frequency)
-            current_angle = self.default_positions.get(name, 90)
-            while abs(current_angle - target_angle) > step_size:
-                current_angle += step_size if current_angle < target_angle else -step_size
-                servo.duty_u16(angle_to_duty_cycle(current_angle))
-                time.sleep(step_delay)
-            servo.duty_u16(angle_to_duty_cycle(target_angle))
-            time.sleep(stop_delay)
-            servo.deinit()
-            print(f"Servo '{name}' moved to {target_angle} degrees.")
- 
-    # Move to positions
-    def move_to_default_position(self, step_delay=0.02):
-        print("Moving to default position...")
-        for name, angle in self.default_positions.items():
-            self.move_servo_by_name(name, angle, step_delay=step_delay)
- 
-    def move_to_pickup_position(self, step_delay=0.02):
-        print("Moving to pickup position...")
-        for name, angle in self.pickup_positions.items():
-            self.move_servo_by_name(name, angle, step_delay=step_delay)
- 
-    def move_to_place_position(self, step_delay=0.02):
-        print("Moving to place position...")
-        self.move_servo_by_name("front_arm", self.place_positions["front_arm"], step_delay=step_delay)
-        for name in ["lower_arm", "wrist_tilt", "wrist_rotation", "base"]:
-            if name in self.place_positions:
-                self.move_servo_by_name(name, self.place_positions[name], step_delay=step_delay)
-        self.move_servo_by_name("gripper", self.place_positions["gripper"], step_delay=step_delay)
- 
-    # Pick and place operations
-    def pick_up_object(self, step_delay=0.02):
-        self.move_to_pickup_position(step_delay=step_delay)
-        print("Picking up object...")
-        self.move_servo_by_name("gripper", 110, stop_delay=2, step_delay=step_delay)
- 
-    def place_object(self, step_delay=0.02):
-        self.move_to_place_position(step_delay=step_delay)
-        print("Placing object...")
-        self.move_servo_by_name("gripper", 60, stop_delay=2, step_delay=step_delay)
- 
-# Initialize RobotArm instance
-arm = RobotArm()
+
+# Initialize PWM objects for each servo
+servos = {name: PWM(Pin(pin)) for name, pin in servo_pins.items()}
+for servo in servos.values():
+    servo.freq(pwm_frequency)
+
+# Function to load servo positions from a file
+position_file = "servo_positions.json"
+def load_servo_positions():
+    try:
+        with open(position_file, 'r') as file:
+            return ujson.load(file)
+    except (OSError, ValueError):
+        # Return default positions if the file doesn't exist or has invalid data
+        return {name: 90 for name in servo_pins}
+
+# Function to save servo positions to a file
+def save_servo_positions():
+    with open(position_file, 'w') as file:
+        ujson.dump(servo_positions, file)
+
+# Load previous servo positions or default to 90 degrees
+servo_positions = load_servo_positions()
+
+# Position definitions for the arm
+def default_position():
+    move_servo_by_name("base", 90, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("lower_arm", 100, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("front_arm", 110, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("wrist_tilt", 70, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("wrist_rotation", 80, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("gripper", 60, stop_delay=1, step_delay=0.05)
+
+def pickup_position():
+    move_servo_by_name("lower_arm", 70, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("front_arm", 119, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("wrist_tilt", 20, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("wrist_rotation", 80, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("gripper", 110, stop_delay=1, step_delay=0.05)
+
+def place_left():
+    move_servo_by_name("lower_arm", 90, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("front_arm", 100, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("base", 160, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("wrist_tilt", 20, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("wrist_rotation", 80, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("gripper", 50, stop_delay=1, step_delay=0.05)
+
+def pickup_position_2():
+    move_servo_by_name("base", 90, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("lower_arm", 70, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("front_arm", 119, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("wrist_tilt", 20, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("wrist_rotation", 80, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("gripper", 110, stop_delay=1, step_delay=0.05)
+
+def place_right():
+    move_servo_by_name("lower_arm", 90, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("front_arm", 100, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("base", 10, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("wrist_tilt", 20, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("wrist_rotation", 80, stop_delay=1, step_delay=0.05)
+    move_servo_by_name("gripper", 50, stop_delay=1, step_delay=0.05)
+
 flashing = False  # LED control flag
- 
 print("Pico listening for UART commands...")
 
-  # Flash LED if active
+# Main loop to listen for UART commands
+while True:
+    poll_results = poll_obj.poll(1)
+    if poll_results:
+        data = sys.stdin.readline().strip()
+        print("Received data:", data)
+
+        if data == "start_left":
+            print("Start command received for left placement")
+            flashing = True
+            default_position()
+            pickup_position()
+            place_left()
+        
+        elif data == "start_right":
+            print("Start command received for right placement")
+            flashing = True
+            default_position()
+            pickup_position()
+            place_right()
+        
+        elif data == "stop":
+            flashing = False
+            led.off()  # Stop flashing LED immediately
+            print("Stopping LED flashing and resetting robot arm.")
+            default_position()
+        
+        else:
+            print(f"Unknown command: {data}")
+
+    # Flash LED if active
     if flashing:
         led.toggle()
         time.sleep(1.5)  # Adjust LED toggle interval
     else:
         led.off()
- 
+
     time.sleep(0.1)
- 
-# Main loop
-while True:
-    # Check for UART commands
-    poll_results = poll_obj.poll(1)
-    if poll_results:
-        data = sys.stdin.readline().strip()
-        print("Received data:", data)
-        if data == "start":
-            flashing = True
-            print("Starting LED flashing and robot operation...")
-            arm.pick_up_object(step_delay=0.05)
-            arm.place_object(step_delay=0.08)
-            arm.move_to_default_position(step_delay=0.05)
- 
-        elif data == "stop":
-            flashing = False
-            led.off()  # Stop flashing LED immediately
-            print("Stopping LED flashing and resetting robot arm.")
-            arm.move_to_default_position(step_delay=0.05)
- 
-        else:
-            print(f"Unknown command: {data}")
+
  

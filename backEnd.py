@@ -1,6 +1,6 @@
-import serial
-from flask import Flask, Response, request, jsonify, render_template
+from flask import Flask, Response, render_template, request, jsonify
 import cv2
+import serial
 from object_detection import ObjectDetection
 
 app = Flask(__name__)
@@ -21,19 +21,47 @@ def generate_frames():
     while True:
         success, frame = cap.read()
         if not success:
+            print("Error: Could not read frame from camera.")
             break
         else:
             # Run object detection if enabled
             if object_detection_active:
                 img, detected_objects = object_detector.detect_objects(frame)
-                
+                # Print detected objects for debugging
+                print("Detected objects:", detected_objects)
+
                 # Check if target object is detected
-                target_detected = any(obj['name'] == 'car','motorbike' for obj in detected_objects)
-                
-                if target_detected and pico_serial and pico_serial.is_open:
-                    pico_serial.write(b'start\n')
-                    print("Object detected, sending 'start' command to Pico")
-                    object_detection_active = False  # Stop detection after initial trigger
+                try:
+                    car_detected = any(obj.get('class') == 'car' for obj in detected_objects)
+                    motorbike_detected = any(obj.get('class') == 'motorbike' for obj in detected_objects)
+                    aeroplane_detected = any(obj.get('class') == 'aeroplane' for obj in detected_objects)
+                    
+                    # Debugging: Check if target detected
+                    print("Car detected:", car_detected)
+                    print("Motorbike detected:", motorbike_detected)
+                    print("Aeroplane detected:", aeroplane_detected)
+
+                except KeyError as e:
+                    print(f"KeyError: {e}. Ensure 'class' is a valid key in detected_objects.")
+                    car_detected = motorbike_detected = aeroplane_detected = False
+
+                # Send the appropriate command based on detection
+                if car_detected or motorbike_detected:
+                    print("Car or Motorbike detected, preparing to send 'place_left' command to Pico...")
+                    if pico_serial and pico_serial.is_open:
+                        pico_serial.write(b'place_left\n')
+                        print("Sent 'place_left' command to Pico for car or motorbike")
+                        object_detection_active = False  # Stop detection after command
+                    else:
+                        print("Error: Serial port not open or pico_serial is None.")
+                elif aeroplane_detected:
+                    print("Aeroplane detected, preparing to send 'place_right' command to Pico...")
+                    if pico_serial and pico_serial.is_open:
+                        pico_serial.write(b'place_right\n')
+                        print("Sent 'place_right' command to Pico for aeroplane")
+                        object_detection_active = False  # Stop detection after command
+                    else:
+                        print("Error: Serial port not open or pico_serial is None.")
 
             else:
                 img = frame  # If detection not active, show normal frame
@@ -56,49 +84,34 @@ def control():
     command = request.args.get('cmd')
 
     if command == 'start':
-        object_detection_active = True
+        object_detection_active = True  # Start object detection
         print("Object detection activated by start button.")
         return jsonify({"status": "Object detection started"}), 200
 
     elif command == 'stop':
-        object_detection_active = False
-        print("Stopping object detection and robot arm.")
-        send_command_to_pico("stop")
+        object_detection_active = False  # Stop object detection
+        print("Sent 'stop' command to Pico.")
+        if pico_serial and pico_serial.is_open:
+            pico_serial.write(b'stop\n')
         return jsonify({"status": "Object detection and robot arm stopped"}), 200
 
     else:
         print(f"Invalid command received: {command}")
         return jsonify({"error": "Invalid command"}), 400
 
-def send_command_to_pico(command):
-    global pico_serial
-    if pico_serial is None:
-        try:
-            pico_serial = serial.Serial(port="COM5", parity=serial.PARITY_EVEN, stopbits=serial.STOPBITS_ONE, timeout=1)
-            pico_serial.flush()
-        except serial.SerialException as e:
-            print(f"Failed to open serial port: {e}")
-            return
-
-    if pico_serial.is_open:
-        pico_serial.write(f"{command}\n".encode())
-        print(f"Sent '{command}' command to Pico.")
-
-# Ensure the serial port is closed properly when the app shuts down
-@app.teardown_appcontext
-def shutdown_serial_connection(exception=None):
-    global pico_serial
-    if pico_serial is not None and pico_serial.is_open:
-        pico_serial.close()
-        print("Serial connection closed during app shutdown")
-
 if __name__ == '__main__':
     try:
+        pico_serial = serial.Serial(port="COM5", baudrate=9600, timeout=1)
+        pico_serial.flush()
+        print("Serial connection established on COM5.")
         app.run(host='0.0.0.0', port=5001, debug=False)
+    except serial.SerialException as e:
+        print(f"Failed to open serial port: {e}")
     finally:
         if pico_serial and pico_serial.is_open:
             pico_serial.close()
             print("Serial connection closed on app exit.")
+
 
 
 
