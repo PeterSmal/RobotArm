@@ -6,8 +6,8 @@
  
 body {
     font-family: 'Arial', sans-serif;
-    background-color: #121212;  /* Dark background */
-    color: white;               /* Text color */
+    background-color: #1f1f1f;  /* Dark background */
+    color: #ffffff;               /* Text color */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -17,8 +17,8 @@ body {
  
 .headerBar {
     width: 100%;
-    background-color: #E50914; /* Red header bar */
-    color: white;
+    background-color: #45361a; /* Red header bar */
+    color: #ffffff;
     padding: 15px 0;
     text-align: center;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -44,7 +44,7 @@ body {
 }
  
 .clicks {
-    background-color: #E50914; /* Red button color */
+    background-color: #45361a; /* Red button color */
     color: white;
     padding: 15px 30px;
     margin: 0 20px;  
@@ -70,7 +70,7 @@ body {
 .videoBox {
     width: 480px;  
     height: 360px;  
-    border: 2px solid #E50914;
+    border: 2px solid #45361a;
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
