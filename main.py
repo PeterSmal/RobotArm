@@ -113,21 +113,6 @@ class CarMovement:
         place_car()
         default_position()
 
-<<<<<<< HEAD
-# Example usage of the methods
-#default_position()
-#pickup_position()
-#place_left()
-#pickup_position_2()
-#place_right()
-
-# Clean up and deactivate PWM for all servos
-for servo in servos.values():
-    servo.deinit()
-
-flashing = False  # LED control flag
- 
-=======
 class AeroplaneMovement:
     @staticmethod
     def execute():
@@ -149,7 +134,6 @@ class MotorcycleMovement:
 # Flashing status for LED control
 flashing = False
 
->>>>>>> b57f04e38cb95d91248718bac72143cdee208fcf
 print("Pico listening for UART commands...")
 
 while True:
@@ -160,15 +144,6 @@ while True:
         
         if data == "car":
             flashing = True
-<<<<<<< HEAD
-            print("Starting LED flashing and robot operation...")
-            default_position()
-            pickup_position()
-            place_left()
-            pickup_position_2()
-            place_right()
- 
-=======
             CarMovement.execute()
             flashing = False
 
@@ -182,17 +157,11 @@ while True:
             MotorcycleMovement.execute()
             flashing = False
 
->>>>>>> b57f04e38cb95d91248718bac72143cdee208fcf
         elif data == "stop":
             flashing = False
             led.off()
             print("Stopping LED flashing and resetting robot arm.")
-<<<<<<< HEAD
-            default_position()
- 
-=======
         
->>>>>>> b57f04e38cb95d91248718bac72143cdee208fcf
         else:
             print(f"Unknown command: {data}")
     

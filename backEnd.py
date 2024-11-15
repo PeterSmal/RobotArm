@@ -14,7 +14,7 @@ object_detection_active = False
 def index():
     return render_template('app.html')
 
-def generate_frames():
+'''def generate_frames():
     global object_detection_active, pico_serial
     cap = cv2.VideoCapture(0)
 
@@ -54,6 +54,61 @@ def generate_frames():
 
                     # Reset detected_class after sending the command to avoid re-sending the same command
                     detected_class = None  # Clear detected_class to allow for future detections
+
+            else:
+                img = frame  # If detection not active, show normal frame
+
+            # Encode and yield frame for streaming
+            ret, buffer = cv2.imencode('.jpg', img)
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+    cap.release()'''
+
+def generate_frames():
+    global object_detection_active, pico_serial
+    cap = cv2.VideoCapture(0)
+
+    while True:
+        success, frame = cap.read()
+        if not success:
+            print("Error: Could not read frame from camera.")
+            break
+        else:
+            # Run object detection if enabled
+            if object_detection_active:
+                img, detected_objects = object_detector.detect_objects(frame)
+                # Print out detected objects for debugging
+                print("Detected objects:", detected_objects)
+
+                # Initialize detected_class as None
+                detected_class = None
+
+                # Check for target objects (car, motorbike, aeroplane) and send corresponding command
+                for obj in detected_objects:
+                    if obj.get('class') in ['car', 'motorcycle', 'airplane']:
+                        detected_class = obj.get('class')
+                        break  # Exit loop after first valid target is found
+
+                # If target detected, send specific command to Pico
+                if detected_class:
+                    print(f"Target object '{detected_class}' detected, checking serial connection to send command...")
+                    if pico_serial:
+                        if pico_serial.is_open:
+                            pico_serial.write(f'{detected_class}\n'.encode())  # Send the detected class to Pico
+                            print(f"Sent '{detected_class}' command to Pico.")
+                        else:
+                            print("Error: Serial port is not open.")
+                    else:
+                        print("Error: pico_serial is None, unable to send command.")
+
+                    # Pause detection briefly to allow sequence completion, then restart
+                    print("Pausing detection briefly to allow sequence completion...")
+                    object_detection_active = False
+                    cv2.waitKey(15000)  # Wait for 15 seconds (adjust based on sequence duration)
+                    print("Resuming detection...")
+                    object_detection_active = True
 
             else:
                 img = frame  # If detection not active, show normal frame
