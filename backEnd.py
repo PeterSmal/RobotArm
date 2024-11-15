@@ -244,25 +244,31 @@ def generate_frames():
                 # Print out detected objects for debugging
                 print("Detected objects:", detected_objects)
 
-                # Check for target objects (car, motorbike, aeroplane) and send corresponding command
+                # Initialize detected_class as None
                 detected_class = None
+
+                # Check for target objects (car, motorbike, aeroplane) and send corresponding command
                 for obj in detected_objects:
-                    if obj.get('class') in ['car', 'motorbike', 'aeroplane']:
+                    if obj.get('class') in ['car', 'motorcycle', 'airplane']:
                         detected_class = obj.get('class')
-                        break
+                        break  # Exit loop after first valid target is found
 
                 # If target detected, send specific command to Pico and stop detection
                 if detected_class:
                     print(f"Target object '{detected_class}' detected, checking serial connection to send command...")
                     if pico_serial:
                         if pico_serial.is_open:
-                            pico_serial.write(f'{detected_class}\n'.encode())
+                            pico_serial.write(f'{detected_class}\n'.encode())  # Send the detected class to Pico
                             print(f"Sent '{detected_class}' command to Pico.")
                             object_detection_active = False  # Stop detection after initial trigger
                         else:
                             print("Error: Serial port is not open.")
                     else:
                         print("Error: pico_serial is None, unable to send command.")
+
+                    # Reset detected_class after sending the command to avoid re-sending the same command
+                    detected_class = None  # Clear detected_class to allow for future detections
+
             else:
                 img = frame  # If detection not active, show normal frame
 
@@ -301,9 +307,9 @@ def control():
 
 if __name__ == '__main__':
     try:
-        pico_serial = serial.Serial(port="COM5", baudrate=9600, timeout=1)
+        pico_serial = serial.Serial(port="COM8", baudrate=9600, timeout=1)
         pico_serial.flush()
-        print("Serial connection established on COM5.")
+        print("Serial connection established on COM8.")
         app.run(host='0.0.0.0', port=5001, debug=False)
     except serial.SerialException as e:
         print(f"Failed to open serial port: {e}")
