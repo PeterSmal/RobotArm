@@ -106,7 +106,7 @@ def generate_frames():
                     # Pause detection briefly to allow sequence completion, then restart
                     print("Pausing detection briefly to allow sequence completion...")
                     object_detection_active = False
-                    cv2.waitKey(15000)  # Wait for 15 seconds (adjust based on sequence duration)
+                    cv2.waitKey(32000)  # Wait for 15 seconds (adjust based on sequence duration)
                     print("Resuming detection...")
                     object_detection_active = True
 
